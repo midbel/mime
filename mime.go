@@ -15,24 +15,30 @@ var (
 	ErrDuplicate = errors.New("duplicate")
 )
 
-var Unknown = Mime{
-	Main: "unknown",
-	Sub:  "unknown",
-}
+const unknown = "unknown"
 
 type Mime struct {
-	Main   string
-	Sub    string
-	Suffix string
-	Params map[string]string
+	MainType string
+	SubType  string
+	Suffix   string
+	Params   map[string]string
+}
+
+var Unknown = Mime{
+	MainType: unknown,
+	SubType:  unknown,
+}
+
+func (m Mime) IsValid() bool {
+	return m.MainType != "" || m.MainType != unknown
 }
 
 func (m Mime) String() string {
 	var str strings.Builder
 
-	str.WriteString(m.Main)
+	str.WriteString(m.MainType)
 	str.WriteRune(slash)
-	str.WriteString(m.Sub)
+	str.WriteString(m.SubType)
 
 	if m.Suffix != "" {
 		str.WriteRune(plus)
@@ -79,14 +85,14 @@ func Parse(str string) (Mime, error) {
 		return Unknown, ErrEmpty
 	}
 	rs := strings.NewReader(str)
-	_, mt.Main, err = parseName(rs, func(b byte) bool {
+	_, mt.MainType, err = parseName(rs, func(b byte) bool {
 		return b == slash
 	})
 	if err != nil {
 		return Unknown, err
 	}
 
-	delim, mt.Sub, err = parseName(rs, func(b byte) bool {
+	delim, mt.SubType, err = parseName(rs, func(b byte) bool {
 		return b == plus || b == semicolon
 	})
 	if err != nil && !errors.Is(err, io.EOF) {
@@ -94,6 +100,7 @@ func Parse(str string) (Mime, error) {
 	}
 
 	mt.Params = make(map[string]string)
+
 	if delim == plus {
 		delim, mt.Suffix, err = parseName(rs, func(b byte) bool {
 			return b == semicolon
