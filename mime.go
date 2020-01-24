@@ -30,7 +30,7 @@ var Unknown = Mime{
 }
 
 func (m Mime) IsValid() bool {
-	return m.MainType != "" || m.MainType != unknown
+	return m.MainType != "" && m.MainType != unknown
 }
 
 func (m Mime) String() string {
@@ -135,7 +135,7 @@ func parseName(rs *strings.Reader, isTerm func(byte) bool) (byte, string, error)
 		return 0, "", ErrEmpty
 	}
 	if !isAlpha(b) {
-		return 0, "", fmt.Errorf("%w: not an alphanumeric character", ErrChar)
+		return 0, "", fmt.Errorf("%w: not an alphanumeric character (%c)", ErrChar, b)
 	}
 
 	var str strings.Builder
@@ -159,6 +159,25 @@ func parseName(rs *strings.Reader, isTerm func(byte) bool) (byte, string, error)
 	return 0, "", fmt.Errorf("%w: termination character not found", ErrChar)
 }
 
+func parseQuoted(rs *strings.Reader) (byte, string, error) {
+	var str strings.Builder
+	for {
+		b, err := rs.ReadByte()
+		if err != nil {
+			return 0, "", err
+		}
+		if b == quote {
+			break
+		}
+		str.WriteByte(b)
+	}
+	b, err := rs.ReadByte()
+	if b == semicolon || err == io.EOF {
+		return 0, str.String(), nil
+	}
+	return 0, "", fmt.Errorf("%w: unexpected character (%c)", ErrChar, b)
+}
+
 func parseKeyValue(rs *strings.Reader) (string, string, error) {
 	_, key, err := parseName(rs, func(b byte) bool {
 		return b == equal
@@ -170,14 +189,16 @@ func parseKeyValue(rs *strings.Reader) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+	var val string
 	if delim != quote {
 		rs.UnreadByte()
-		delim = semicolon
+		_, val, err = parseName(rs, func(b byte) bool {
+			return b == semicolon
+		})
+	} else {
+		_, val, err = parseQuoted(rs)
 	}
-	delim, val, err := parseName(rs, func(b byte) bool {
-		return b == delim
-	})
-	return key, val, nil
+	return key, val, err
 }
 
 func skipBlank(rs *strings.Reader) {

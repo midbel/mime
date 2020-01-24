@@ -23,6 +23,8 @@ func TestParse(t *testing.T) {
 		{Mime: "text/xml", Valid: true},
 		{Mime: "text/xml;charset=UTF-8", Valid: true},
 		{Mime: "text/xml;charset=\"UTF-8\"", Valid: true},
+		{Mime: "multipart/alternative; foo=\"bar\"", Valid: true},
+		{Mime: "multipart/alternative; foo=\"bar\";bar=\"foo\"", Valid: true},
 	}
 	for i, mt := range mimetypes {
 		_, err := Parse(mt.Mime)
