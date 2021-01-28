@@ -73,6 +73,7 @@ const (
 	ampersand  = '&'
 	bang       = '!'
 	pound      = '#'
+	comma      = ','
 )
 
 func Parse(str string) (Mime, error) {
@@ -193,7 +194,7 @@ func parseKeyValue(rs *strings.Reader) (string, string, error) {
 	if delim != quote {
 		rs.UnreadByte()
 		_, val, err = parseName(rs, func(b byte) bool {
-			return b == semicolon
+			return b == semicolon || b == comma
 		})
 	} else {
 		_, val, err = parseQuoted(rs)
